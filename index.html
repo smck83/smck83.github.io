@@ -1,1 +1,528 @@
-ehlo world
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 The Workshop of Wandering Thoughts</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f0f1a;
+    --card-bg: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --accent1: #6c63ff;
+    --accent2: #00d2ff;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --accent5: #6bff9e;
+    --text: #e0e0e0;
+    --text-dim: #888;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Floating particles */
+  .particles {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+    animation: drift linear infinite;
+  }
+
+  @keyframes drift {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.15; }
+    90% { opacity: 0.15; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .brain-icon {
+    font-size: 4rem;
+    display: inline-block;
+    animation: think 3s ease-in-out infinite;
+    margin-bottom: 1rem;
+  }
+
+  @keyframes think {
+    0%, 100% { transform: rotate(-3deg) scale(1); }
+    25% { transform: rotate(3deg) scale(1.05); }
+    50% { transform: rotate(-2deg) scale(1); }
+    75% { transform: rotate(4deg) scale(1.02); }
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    background: linear-gradient(135deg, var(--accent1), var(--accent2), var(--accent5));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .tagline {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.6;
+  }
+
+  .tagline em {
+    color: var(--accent4);
+    font-style: normal;
+  }
+
+  /* Thought ticker */
+  .ticker-wrap {
+    overflow: hidden;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    padding: 0.5rem 0;
+    margin-bottom: 3rem;
+  }
+
+  .ticker {
+    display: flex;
+    white-space: nowrap;
+    animation: scroll-left 30s linear infinite;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .ticker span {
+    padding: 0 2rem;
+    flex-shrink: 0;
+  }
+
+  .ticker span::before {
+    content: '▸ ';
+    color: var(--accent2);
+  }
+
+  @keyframes scroll-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* Status badge */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 2rem;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--accent5);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(107, 255, 158, 0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(107, 255, 158, 0); }
+  }
+
+  /* About card */
+  .about-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .about-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent5), var(--accent4));
+  }
+
+  .about-card h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--accent2);
+    margin-bottom: 1rem;
+  }
+
+  .about-card p {
+    color: var(--text-dim);
+    line-height: 1.7;
+    font-size: 0.95rem;
+  }
+
+  .about-card p + p {
+    margin-top: 0.75rem;
+  }
+
+  /* Traits grid */
+  .traits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .trait {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+
+  .trait:hover {
+    border-color: var(--accent1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.1);
+  }
+
+  .trait-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .trait h3 {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+  }
+
+  .trait p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Content expectations */
+  .expect {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .expect h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--accent4);
+    margin-bottom: 1.25rem;
+  }
+
+  .expect-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .expect-item span:first-child {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    text-align: center;
+    padding: 2rem 1rem;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .disclaimer p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    max-width: 550px;
+    margin: 0 auto;
+  }
+
+  .disclaimer .version {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.2);
+    margin-top: 1rem;
+  }
+
+  /* Random thought popup */
+  .thought-bubble {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    max-width: 280px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s ease;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .thought-bubble.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .thought-bubble::before {
+    content: '💭 ';
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .container { padding: 2rem 1rem; }
+    .traits { grid-template-columns: 1fr; }
+    .thought-bubble { left: 1rem; right: 1rem; max-width: none; bottom: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Thought bubble -->
+<div class="thought-bubble" id="thought"></div>
+
+<div class="container">
+  <div class="header">
+    <div class="brain-icon">🧠</div>
+    <h1>The Workshop of Wandering Thoughts</h1>
+    <p class="tagline">
+      Welcome to the digital junk drawer of someone whose brain treats
+      <em>"I wonder if..."</em> as a lifestyle choice.
+    </p>
+    <div class="status">
+      <div class="status-dot"></div>
+      Currently tinkering with something instead of finishing something else
+    </div>
+  </div>
+
+  <!-- Scrolling ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker">
+      <span>what if I automate my coffee machine</span>
+      <span>half-finished home assistant dashboard</span>
+      <span>ooh a new API to play with</span>
+      <span>surely this only needs one more script</span>
+      <span>3am proof of concept energy</span>
+      <span>it works on my machine™</span>
+      <span>wait I had another idea</span>
+      <span>just one more "quick test"</span>
+      <span>the real project was the tangents we went on</span>
+      <span>I should really document this… nah</span>
+      <span>what if I automate my coffee machine</span>
+      <span>half-finished home assistant dashboard</span>
+      <span>ooh a new API to play with</span>
+      <span>surely this only needs one more script</span>
+      <span>3am proof of concept energy</span>
+      <span>it works on my machine™</span>
+      <span>wait I had another idea</span>
+      <span>just one more "quick test"</span>
+      <span>the real project was the tangents we went on</span>
+      <span>I should really document this… nah</span>
+    </div>
+  </div>
+
+  <!-- About -->
+  <div class="about-card">
+    <h2>// README.md (that nobody reads)</h2>
+    <p>
+      This is a collection of proof-of-concepts, half-baked experiments, and 
+      "what if" files that fell out of a brain with too many browser tabs open.
+      Part solution engineer, part chaos goblin, fully powered by curiosity 
+      and an unreasonable belief that everything can be automated.
+    </p>
+    <p>
+      If you're here, you'll find HTML files, scripts, AI experiments, 
+      home automation snippets, and things that technically work but 
+      probably shouldn't be shown in polite company. Every file here started 
+      as a passing thought that refused to stay passing.
+    </p>
+  </div>
+
+  <!-- Traits -->
+  <div class="traits">
+    <div class="trait">
+      <div class="trait-icon">🔧</div>
+      <h3>Tinkerer by Default</h3>
+      <p>If it exists, it can be taken apart. If it doesn't exist, it can be built at 2am.</p>
+    </div>
+    <div class="trait">
+      <div class="trait-icon">🤖</div>
+      <h3>AI Enthusiast</h3>
+      <p>Will absolutely ask an AI to help build a thing that asks another AI to do a thing.</p>
+    </div>
+    <div class="trait">
+      <div class="trait-icon">🏠</div>
+      <h3>Home Automation</h3>
+      <p>The house doesn't just have smart lights. The house has opinions now.</p>
+    </div>
+    <div class="trait">
+      <div class="trait-icon">📜</div>
+      <h3>Script Everything</h3>
+      <p>If I have to do it twice, I'm writing a script. If I do it once, I might still write a script.</p>
+    </div>
+    <div class="trait">
+      <div class="trait-icon">🧩</div>
+      <h3>Solution Engineering</h3>
+      <p>Give me a problem and I'll give you a solution. Also three new problems. And a diagram.</p>
+    </div>
+    <div class="trait">
+      <div class="trait-icon">🦋</div>
+      <h3>Beautifully Scattered</h3>
+      <p>My focus has a focus, but that focus also has several sub-focuses running in parallel.</p>
+    </div>
+  </div>
+
+  <!-- What to expect -->
+  <div class="expect">
+    <h2>// what you'll find here</h2>
+    <div class="expect-item">
+      <span>📁</span>
+      <span>Proof-of-concept HTML/JS files that prove a concept and then get abandoned for the next concept</span>
+    </div>
+    <div class="expect-item">
+      <span>⚡</span>
+      <span>Automation scripts that saved 10 minutes but took 4 hours to write (worth it)</span>
+    </div>
+    <div class="expect-item">
+      <span>🧪</span>
+      <span>AI experiments ranging from "genuinely useful" to "why did I build this"</span>
+    </div>
+    <div class="expect-item">
+      <span>🏡</span>
+      <span>Home automation configs, dashboards, and things that make visitors slightly uncomfortable</span>
+    </div>
+    <div class="expect-item">
+      <span>🗺️</span>
+      <span>Absolutely zero guarantee of organisation, documentation, or completion</span>
+    </div>
+  </div>
+
+  <!-- Footer / Disclaimer -->
+  <div class="disclaimer">
+    <p>
+      No files were harmed in the making of this repository.
+      Several were started, most were not finished, and at least one 
+      was created entirely because the author saw something shiny.
+    </p>
+    <div class="version">v0.1.0-beta-probably-forever · built with curiosity & caffeine</div>
+  </div>
+</div>
+
+<script>
+  // Floating particles
+  const particlesEl = document.getElementById('particles');
+  const colors = ['#6c63ff','#00d2ff','#ff6b6b','#ffd93d','#6bff9e'];
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 6 + 2;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (Math.random() * 20 + 15) + 's';
+    p.style.animationDelay = (Math.random() * 20) + 's';
+    particlesEl.appendChild(p);
+  }
+
+  // Random intrusive thoughts
+  const thoughts = [
+    "What if the toaster had an API...",
+    "I should really finish that other project... anyway—",
+    "New tab opened. Previous task: forgotten.",
+    "This could be a microservice. Everything could be.",
+    "Hang on, let me just quickly automate this one thing...",
+    "I have 47 browser tabs and they all spark joy.",
+    "Productivity hack: start 12 projects, finish vibes.",
+    "Documentation is just future me's problem.",
+    "Sure it's 1am, but this script is almost working...",
+    "Alexa, remind me to finish what I was—ooh, a butterfly.",
+    "My git history is a choose-your-own-adventure novel.",
+    "The real MVP is Ctrl+Z.",
+    "I don't have too many side projects. I have a portfolio of curiosity.",
+    "Hyperfocus activated. Target: something completely unrelated.",
+    "Just gonna quickly refactor th— and now it's a different app.",
+  ];
+
+  const thoughtEl = document.getElementById('thought');
+  let thoughtTimeout;
+
+  function showThought() {
+    const t = thoughts[Math.floor(Math.random() * thoughts.length)];
+    thoughtEl.textContent = t;
+    thoughtEl.classList.add('show');
+    clearTimeout(thoughtTimeout);
+    thoughtTimeout = setTimeout(() => {
+      thoughtEl.classList.remove('show');
+    }, 4000);
+  }
+
+  // Show first thought after 3s, then every 8-15s
+  setTimeout(() => {
+    showThought();
+    setInterval(showThought, Math.random() * 7000 + 8000);
+  }, 3000);
+</script>
+</body>
+</html>
