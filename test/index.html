@@ -1,1 +1,243 @@
-ehlo test
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animal Deaths by Country — Interactive Bubble Chart</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fafaf8;color:#2c2c2a;padding:24px;max-width:800px;margin:0 auto}
+@media(prefers-color-scheme:dark){body{background:#1a1a18;color:#e0ded6}}
+h1{font-size:20px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:16px}
+.section-label{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.pill{font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid #ccc;background:transparent;color:inherit;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.pill:hover{background:rgba(0,0,0,.04)}
+.pill.active{border-color:#555;background:rgba(0,0,0,.06);font-weight:500}
+@media(prefers-color-scheme:dark){.pill{border-color:#555}.pill.active{border-color:#aaa;background:rgba(255,255,255,.08)}.pill:hover{background:rgba(255,255,255,.05)}}
+.pill .swatch{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pill.off{opacity:.4}
+.pill.off .swatch{background:#aaa!important}
+.toggle-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.country-toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.country-toggles .pill{font-size:11px;padding:3px 8px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#888;margin:8px 0 4px}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.detail{background:#f0efe8;border-radius:12px;padding:16px 20px;margin-top:12px;animation:fadeIn .2s}
+@media(prefers-color-scheme:dark){.detail{background:#2a2a26}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.detail-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.detail-name{font-size:16px;font-weight:500}
+.detail-region{font-size:13px;color:#888;margin-left:8px}
+.detail-total{font-size:20px;font-weight:500}
+.detail-unit{font-size:12px;color:#888;margin-left:4px}
+.detail-meta{font-size:12px;color:#888;margin-bottom:10px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.bar-label{font-size:12px;color:#888;width:100px;text-align:right;flex-shrink:0}
+.bar-track{flex:1;height:16px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden}
+@media(prefers-color-scheme:dark){.bar-track{background:rgba(255,255,255,.06)}}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.bar-val{font-size:12px;font-weight:500;width:50px;flex-shrink:0}
+.bar-row.disabled .bar-label{text-decoration:line-through;opacity:.4}
+.bar-row.disabled .bar-fill{opacity:.2}
+svg text{font-family:inherit}
+.note{font-size:11px;color:#aaa;margin-top:8px;font-style:italic}
+</style>
+</head>
+<body>
+<h1>Death by animals, by country</h1>
+<p class="sub">Toggle animal types on/off to see how the picture changes. Click a bubble for the full breakdown.</p>
+
+<div class="section-label">Animal types (click to toggle)</div>
+<div class="toggle-row" id="animal-toggles"></div>
+
+<div class="section-label">Regions</div>
+<div class="filters" id="region-filters"></div>
+
+<div class="section-label">Countries (click to hide/show)</div>
+<div class="country-toggles" id="country-toggles"></div>
+
+<svg id="chart" width="100%" viewBox="0 0 700 460"></svg>
+<div class="legend" id="legend"></div>
+<div id="detail" style="display:none"></div>
+<p class="note" id="note"></p>
+
+<script>
+const countries=[
+{name:"Nigeria",pop:224,region:"Africa",mosquito:82,snake:.7,croc:.15,hippo:.08,large:.05,scorpion:.04},
+{name:"DR Congo",pop:102,region:"Africa",mosquito:68,snake:1,croc:.2,hippo:.1,large:.04,scorpion:.02},
+{name:"Niger",pop:27,region:"Africa",mosquito:75,snake:.9,croc:.05,hippo:.02,large:.03,scorpion:.15},
+{name:"Mozambique",pop:33,region:"Africa",mosquito:55,snake:.8,croc:.18,hippo:.06,large:.03,scorpion:.03},
+{name:"Tanzania",pop:66,region:"Africa",mosquito:40,snake:.6,croc:.12,hippo:.07,large:.1,scorpion:.02},
+{name:"Uganda",pop:48,region:"Africa",mosquito:45,snake:.5,croc:.08,hippo:.04,large:.06,scorpion:.01},
+{name:"Burkina Faso",pop:23,region:"Africa",mosquito:60,snake:1.2,croc:.03,hippo:.01,large:.01,scorpion:.1},
+{name:"India",pop:1440,region:"S. Asia",mosquito:.8,snake:4,croc:.02,hippo:0,large:.04,scorpion:.15},
+{name:"Pakistan",pop:240,region:"S. Asia",mosquito:.3,snake:1.2,croc:.01,hippo:0,large:.01,scorpion:.2},
+{name:"Bangladesh",pop:173,region:"S. Asia",mosquito:.2,snake:.8,croc:.01,hippo:0,large:.01,scorpion:.05},
+{name:"Nepal",pop:31,region:"S. Asia",mosquito:.1,snake:1.5,croc:.02,hippo:0,large:.02,scorpion:.08},
+{name:"Indonesia",pop:278,region:"SE Asia",mosquito:1.5,snake:.5,croc:.08,hippo:0,large:.01,scorpion:.02},
+{name:"Myanmar",pop:55,region:"SE Asia",mosquito:2,snake:1.8,croc:.05,hippo:0,large:.03,scorpion:.03},
+{name:"Brazil",pop:216,region:"Americas",mosquito:.3,snake:.15,croc:.01,hippo:0,large:.01,scorpion:.06},
+{name:"Colombia",pop:52,region:"Americas",mosquito:.2,snake:.2,croc:.02,hippo:.01,large:.01,scorpion:.04},
+{name:"Australia",pop:27,region:"Oceania",mosquito:.01,snake:.08,croc:.04,hippo:0,large:.12,scorpion:0},
+{name:"United States",pop:340,region:"Americas",mosquito:.01,snake:.002,croc:0,hippo:0,large:.02,scorpion:.001},
+{name:"United Kingdom",pop:68,region:"Europe",mosquito:0,snake:0,croc:0,hippo:0,large:.01,scorpion:0},
+{name:"Mexico",pop:130,region:"Americas",mosquito:.05,snake:.12,croc:.01,hippo:0,large:.01,scorpion:.2},
+];
+
+const animalTypes=[
+{key:"mosquito",label:"Mosquitoes",color:"#E24B4A"},
+{key:"snake",label:"Snakes",color:"#BA7517"},
+{key:"croc",label:"Crocodiles",color:"#1D9E75"},
+{key:"hippo",label:"Hippos",color:"#7F77DD"},
+{key:"large",label:"Large mammals",color:"#378ADD"},
+{key:"scorpion",label:"Scorpions",color:"#D4537E"},
+];
+
+const regionColors={Africa:"#E24B4A","S. Asia":"#BA7517","SE Asia":"#EF9F27",Americas:"#1D9E75",Oceania:"#378ADD",Europe:"#888780"};
+const regionList=["all","Africa","S. Asia","SE Asia","Americas","Oceania","Europe"];
+
+let activeAnimals=new Set(animalTypes.map(a=>a.key));
+let activeCountries=new Set(countries.map(c=>c.name));
+let regionFilter="all";
+let selected=null;
+
+function buildAnimalToggles(){
+  const el=document.getElementById("animal-toggles");
+  el.innerHTML="";
+  animalTypes.forEach(a=>{
+    const b=document.createElement("button");
+    b.className="pill"+(activeAnimals.has(a.key)?"":" off");
+    b.innerHTML=`<span class="swatch" style="background:${a.color}"></span>${a.label}`;
+    b.onclick=()=>{
+      if(activeAnimals.has(a.key)){if(activeAnimals.size>1)activeAnimals.delete(a.key)}
+      else activeAnimals.add(a.key);
+      buildAnimalToggles();draw();
+    };
+    el.appendChild(b);
+  });
+}
+
+function buildRegionFilters(){
+  const el=document.getElementById("region-filters");
+  el.innerHTML="";
+  regionList.forEach(r=>{
+    const b=document.createElement("button");
+    b.className="pill"+(regionFilter===r?" active":"");
+    b.textContent=r==="all"?"All":r;
+    b.onclick=()=>{regionFilter=r;selected=null;buildRegionFilters();buildCountryToggles();draw()};
+    el.appendChild(b);
+  });
+}
+
+function buildCountryToggles(){
+  const el=document.getElementById("country-toggles");
+  el.innerHTML="";
+  const visible=countries.filter(c=>regionFilter==="all"||c.region===regionFilter);
+  visible.forEach(c=>{
+    const b=document.createElement("button");
+    const on=activeCountries.has(c.name);
+    b.className="pill"+(on?"":" off");
+    b.innerHTML=`<span class="swatch" style="background:${regionColors[c.region]}"></span>${c.name}`;
+    b.onclick=()=>{
+      if(on){activeCountries.delete(c.name);if(selected===c.name)selected=null}
+      else activeCountries.add(c.name);
+      buildCountryToggles();draw();
+    };
+    el.appendChild(b);
+  });
+}
+
+function getTotal(c){return animalTypes.reduce((s,a)=>activeAnimals.has(a.key)?s+c[a.key]:s,0)}
+function getTopKiller(c){
+  let best=null,bestV=0;
+  animalTypes.forEach(a=>{if(activeAnimals.has(a.key)&&c[a.key]>bestV){best=a;bestV=c[a.key]}});
+  return best||animalTypes[0];
+}
+
+function draw(){
+  const svg=document.getElementById("chart");
+  const det=document.getElementById("detail");
+  const noteEl=document.getElementById("note");
+  const data=countries
+    .filter(c=>activeCountries.has(c.name))
+    .filter(c=>regionFilter==="all"||c.region===regionFilter)
+    .map(c=>({...c,total:getTotal(c),topKiller:getTopKiller(c)}))
+    .sort((a,b)=>b.total-a.total);
+
+  const excluded=animalTypes.filter(a=>!activeAnimals.has(a.key)).map(a=>a.label);
+  noteEl.textContent=excluded.length?`Excluding: ${excluded.join(", ")} — toggle them back on above to include.`:"All animal types included.";
+
+  if(!data.length){svg.innerHTML=`<text x="350" y="230" text-anchor="middle" font-size="14" fill="#888">No countries selected</text>`;det.style.display="none";return}
+
+  const maxPop=Math.max(...data.map(d=>d.pop));
+  const maxT=Math.max(...data.map(d=>d.total),.01);
+  const W=700,H=460,p={t:30,r:30,b:60,l:70};
+  const cw=W-p.l-p.r,ch=H-p.t-p.b;
+  const logMinX=Math.log10(.5),logMaxX=Math.log10(Math.max(maxPop*1.5,2));
+  const logMinY=Math.log10(.005),logMaxY=Math.log10(Math.max(maxT*2,.05));
+  const xS=v=>p.l+(Math.log10(Math.max(v,.5))-logMinX)/(logMaxX-logMinX)*cw;
+  const yS=v=>p.t+ch-(Math.log10(Math.max(v,.005))-logMinY)/(logMaxY-logMinY)*ch;
+  const rS=v=>Math.max(6,Math.sqrt(Math.max(v,0))*1.8);
+
+  const isDark=matchMedia("(prefers-color-scheme:dark)").matches;
+  const tc=isDark?"#aaa":"#888";
+  const gc=isDark?"rgba(255,255,255,.08)":"rgba(0,0,0,.06)";
+  const pc=isDark?"#e0ded6":"#2c2c2a";
+
+  let s="";
+  const xTicks=[1,10,50,100,500,1500].filter(v=>{const x=xS(v);return x>=p.l&&x<=W-p.r});
+  xTicks.forEach(v=>{const x=xS(v);s+=`<line x1="${x}" y1="${p.t}" x2="${x}" y2="${H-p.b}" stroke="${gc}" stroke-width="0.5"/><text x="${x}" y="${H-p.b+18}" text-anchor="middle" font-size="11" fill="${tc}">${v>=1000?(v/1000)+"B":v+"M"}</text>`});
+
+  const yTicks=[.01,.1,1,10,100].filter(v=>{const y=yS(v);return y>=p.t-5&&y<=H-p.b+5});
+  yTicks.forEach(v=>{const y=yS(v);s+=`<line x1="${p.l}" y1="${y}" x2="${W-p.r}" y2="${y}" stroke="${gc}" stroke-width="0.5"/><text x="${p.l-8}" y="${y+4}" text-anchor="end" font-size="11" fill="${tc}">${v<1?v:Math.round(v)}</text>`});
+
+  s+=`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="12" fill="${tc}" font-weight="500">Population (millions, log scale)</text>`;
+  s+=`<text x="14" y="${H/2}" text-anchor="middle" font-size="12" fill="${tc}" font-weight="500" transform="rotate(-90,14,${H/2})">Deaths per 100k (active animals, log)</text>`;
+
+  data.forEach(c=>{
+    const cx=xS(c.pop),cy=yS(c.total),r=rS(c.total);
+    const sel=selected===c.name;
+    s+=`<g class="bub" data-name="${c.name}" style="cursor:pointer">`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="${r+4}" fill="transparent"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${regionColors[c.region]}" opacity="${sel?.95:.7}" stroke="${sel?pc:"none"}" stroke-width="${sel?2:0}"/>`;
+    if(r>8||sel||data.length<10) s+=`<text x="${cx}" y="${cy-r-5}" text-anchor="middle" font-size="11" font-weight="500" fill="${pc}">${c.name}</text>`;
+    s+=`</g>`;
+  });
+
+  svg.innerHTML=s;
+  svg.querySelectorAll(".bub").forEach(g=>{
+    g.onclick=()=>{const n=g.dataset.name;selected=selected===n?null:n;draw()};
+  });
+
+  if(selected){
+    const c=data.find(d=>d.name===selected);
+    if(!c){det.style.display="none";return}
+    const allBars=animalTypes.filter(a=>c[a.key]>0).sort((a,b)=>c[b.key]-c[a.key]);
+    const activeBars=allBars.filter(a=>activeAnimals.has(a.key));
+    const mx=Math.max(...allBars.map(a=>c[a.key]),.001);
+    let h=`<div class="detail-header"><div><span class="detail-name">${c.name}</span><span class="detail-region">${c.region}</span></div><div><span class="detail-total">${c.total.toFixed(1)}</span><span class="detail-unit">per 100k (active)</span></div></div>`;
+    h+=`<div class="detail-meta">Pop: ${c.pop}M · Top active killer: ${c.topKiller.label}</div>`;
+    allBars.forEach(a=>{
+      const on=activeAnimals.has(a.key);
+      const w=Math.max((c[a.key]/mx)*100,2);
+      h+=`<div class="bar-row${on?"":" disabled"}"><span class="bar-label">${a.label}${on?"":" (off)"}</span><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${a.color}"></div></div><span class="bar-val">${c[a.key].toFixed(2)}</span></div>`;
+    });
+    det.innerHTML=h;det.className="detail";det.style.display="block";
+  } else {det.style.display="none"}
+}
+
+const legEl=document.getElementById("legend");
+Object.entries(regionColors).forEach(([r,c])=>{legEl.innerHTML+=`<span><span class="dot" style="background:${c}"></span>${r}</span>`});
+legEl.innerHTML+=`<span style="margin-left:auto;font-style:italic">Bubble size = death rate</span>`;
+
+buildAnimalToggles();
+buildRegionFilters();
+buildCountryToggles();
+draw();
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",()=>{draw()});
+</script>
+</body>
+</html>
