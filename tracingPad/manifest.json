@@ -2,7 +2,7 @@
   "name": "Tracing Pad",
   "short_name": "Tracing Pad",
   "description": "Display an image and lock the screen so kids can trace.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
