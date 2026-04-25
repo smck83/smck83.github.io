@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<!-- Web App Manifest (Android Chrome / PWA install) -->
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS web app meta tags (for Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tracing Pad">
+<meta name="theme-color" content="#0a0a0a">
+
+<!-- Inline SVG icon as Apple touch icon (no external file needed) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0a'/><text x='90' y='118' font-family='Georgia,serif' font-size='110' font-style='italic' fill='%23d4a574' text-anchor='middle'>T</text></svg>">
+
+<title>Tracing Pad</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #1a1a1a;
+    --ink: #f5f1e8;
+    --muted: #888;
+    --accent: #d4a574;
+    --danger: #c66;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-rounded, -apple-system, "SF Pro Rounded", system-ui, sans-serif;
+    touch-action: manipulation;
+  }
+
+  body.locked { touch-action: none; }
+
+  .upload-screen {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 28px;
+    background: radial-gradient(ellipse at top, #1a1410 0%, #0a0a0a 60%);
+  }
+
+  .title {
+    font-family: Georgia, "Iowan Old Style", "Palatino", serif;
+    font-size: clamp(32px, 8vw, 56px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+  .title em { font-style: italic; color: var(--accent); }
+
+  .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.5;
+    margin-top: 12px;
+  }
+
+  .upload-btn {
+    background: var(--accent);
+    color: #1a1410;
+    border: none;
+    padding: 18px 36px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 8px 24px rgba(212, 165, 116, 0.25);
+    transition: transform 0.15s ease;
+  }
+  .upload-btn:active { transform: scale(0.97); }
+  #file-input { display: none; }
+
+  .hint {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+    border-top: 1px solid #222;
+    padding-top: 20px;
+    margin-top: 8px;
+  }
+
+  .ios-banner {
+    display: none;
+    background: rgba(212, 165, 116, 0.08);
+    border: 1px solid rgba(212, 165, 116, 0.3);
+    border-radius: 14px;
+    padding: 14px 16px;
+    max-width: 340px;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .ios-banner.visible { display: block; }
+  .ios-banner strong { color: var(--accent); }
+  .ios-banner .share-icon {
+    display: inline-block;
+    vertical-align: -3px;
+    width: 14px;
+    height: 14px;
+  }
+  .ios-banner-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 8px;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: inherit;
+  }
+
+  .trace-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+  }
+  .trace-screen.active { display: block; }
+
+  .image-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #trace-image {
+    max-width: 100%;
+    max-height: 100%;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+  }
+
+  .controls {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10;
+  }
+  .controls.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .slider-row label {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 64px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .btn-row { display: flex; gap: 10px; }
+
+  .btn {
+    flex: 1;
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--ink);
+    border: 1px solid #2a2a2a;
+    padding: 14px 12px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.1s ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #1a1410;
+    border-color: var(--accent);
+  }
+
+  .lock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .lock-overlay.active { display: block; }
+
+  .unlock-zone {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 80px;
+    height: 80px;
+    z-index: 30;
+    display: none;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 16px;
+    cursor: pointer;
+  }
+  .unlock-zone.active-lock { display: flex; }
+
+  .unlock-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(212, 165, 116, 0.4);
+    border: 2px solid rgba(212, 165, 116, 0.7);
+    transition: all 0.2s ease;
+  }
+  .unlock-zone.pressing .unlock-dot {
+    background: var(--accent);
+    transform: scale(1.5);
+    box-shadow: 0 0 20px var(--accent);
+  }
+
+  .unlock-hint {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+    z-index: 25;
+    display: none;
+    letter-spacing: 0.04em;
+  }
+  .unlock-hint.visible { display: block; animation: fadeOut 3s ease forwards; }
+  @keyframes fadeOut {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .wake-status {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    background: rgba(26, 26, 26, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 6px 10px;
+    border-radius: 999px;
+    z-index: 15;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wake-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .wake-status.on .wake-dot {
+    background: #6c6;
+    box-shadow: 0 0 6px #6c6;
+  }
+</style>
+</head>
+<body>
+
+<div class="upload-screen" id="upload-screen">
+  <div>
+    <h1 class="title">Tracing <em>Pad</em></h1>
+    <p class="subtitle">Pick an image. Lock the screen. Trace away.</p>
+  </div>
+
+  <label class="upload-btn" for="file-input">Choose an image</label>
+  <input type="file" id="file-input" accept="image/*">
+
+  <div class="ios-banner" id="ios-banner">
+    For true fullscreen on iPhone, tap
+    <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2v13M7 7l5-5 5 5M5 12v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/>
+    </svg>
+    Share, then <strong>Add to Home Screen</strong>. Open from the home icon and Safari's bars disappear.
+    <br>
+    <button class="ios-banner-close" id="ios-banner-close">Got it</button>
+  </div>
+
+  <p class="hint">
+    Tip: turn your device brightness all the way up so the image shows through paper.
+  </p>
+</div>
+
+<div class="trace-screen" id="trace-screen">
+  <div class="wake-status" id="wake-status">
+    <span class="wake-dot"></span>
+    <span id="wake-text">Screen sleep</span>
+  </div>
+
+  <div class="image-wrap">
+    <img id="trace-image" alt="Image to trace">
+  </div>
+
+  <div class="unlock-hint" id="unlock-hint">Hold the dot to unlock</div>
+
+  <div class="lock-overlay" id="lock-overlay"></div>
+
+  <div class="unlock-zone" id="unlock-zone">
+    <div class="unlock-dot"></div>
+  </div>
+
+  <div class="controls" id="controls">
+    <div class="slider-row">
+      <label>Brightness</label>
+      <input type="range" id="brightness" min="30" max="150" value="100">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="change-btn">New image</button>
+      <button class="btn btn-primary" id="lock-btn">Lock screen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('file-input');
+  const uploadScreen = document.getElementById('upload-screen');
+  const traceScreen = document.getElementById('trace-screen');
+  const traceImage = document.getElementById('trace-image');
+  const brightnessSlider = document.getElementById('brightness');
+  const lockBtn = document.getElementById('lock-btn');
+  const changeBtn = document.getElementById('change-btn');
+  const lockOverlay = document.getElementById('lock-overlay');
+  const unlockZone = document.getElementById('unlock-zone');
+  const unlockHint = document.getElementById('unlock-hint');
+  const controls = document.getElementById('controls');
+  const wakeStatus = document.getElementById('wake-status');
+  const wakeText = document.getElementById('wake-text');
+  const iosBanner = document.getElementById('ios-banner');
+  const iosBannerClose = document.getElementById('ios-banner-close');
+
+  let wakeLock = null;
+  let isLocked = false;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIOS && !isStandalone) {
+    try {
+      if (!localStorage.getItem('iosBannerDismissed')) {
+        iosBanner.classList.add('visible');
+      }
+    } catch (e) {
+      iosBanner.classList.add('visible');
+    }
+  }
+  iosBannerClose.addEventListener('click', () => {
+    iosBanner.classList.remove('visible');
+    try { localStorage.setItem('iosBannerDismissed', '1'); } catch (e) {}
+  });
+
+  function tryFullscreen(el) {
+    if (el.requestFullscreen) {
+      return el.requestFullscreen().catch(() => {});
+    } else if (el.webkitRequestFullscreen) {
+      try { el.webkitRequestFullscreen(); } catch (e) {}
+    } else if (el.webkitEnterFullscreen) {
+      try { el.webkitEnterFullscreen(); } catch (e) {}
+    }
+  }
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    traceImage.src = url;
+    traceImage.onload = () => {
+      uploadScreen.style.display = 'none';
+      traceScreen.classList.add('active');
+      requestWakeLock();
+      tryFullscreen(document.documentElement);
+    };
+  });
+
+  brightnessSlider.addEventListener('input', (e) => {
+    traceImage.style.filter = `brightness(${e.target.value}%)`;
+  });
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) {
+      wakeText.textContent = 'Set auto-lock to Never';
+      return;
+    }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeStatus.classList.add('on');
+      wakeText.textContent = 'Screen stays on';
+      wakeLock.addEventListener('release', () => {
+        wakeStatus.classList.remove('on');
+        wakeText.textContent = 'Screen sleep';
+      });
+    } catch (err) {
+      wakeText.textContent = 'Could not keep screen on';
+      console.error('Wake lock failed:', err);
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && traceScreen.classList.contains('active')) {
+      requestWakeLock();
+    }
+  });
+
+  lockBtn.addEventListener('click', () => {
+    isLocked = true;
+    document.body.classList.add('locked');
+    lockOverlay.classList.add('active');
+    unlockZone.classList.add('active-lock');
+    controls.classList.add('hidden');
+    unlockHint.classList.remove('visible');
+    void unlockHint.offsetWidth;
+    unlockHint.classList.add('visible');
+  });
+
+  let pressTimer = null;
+  function startPress(e) {
+    if (!isLocked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    unlockZone.classList.add('pressing');
+    pressTimer = setTimeout(() => unlock(), 1500);
+  }
+  function endPress() {
+    unlockZone.classList.remove('pressing');
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  }
+  unlockZone.addEventListener('touchstart', startPress, { passive: false });
+  unlockZone.addEventListener('touchend', endPress);
+  unlockZone.addEventListener('touchcancel', endPress);
+  unlockZone.addEventListener('mousedown', startPress);
+  unlockZone.addEventListener('mouseup', endPress);
+  unlockZone.addEventListener('mouseleave', endPress);
+
+  function unlock() {
+    isLocked = false;
+    document.body.classList.remove('locked');
+    lockOverlay.classList.remove('active');
+    unlockZone.classList.remove('active-lock', 'pressing');
+    controls.classList.remove('hidden');
+  }
+
+  changeBtn.addEventListener('click', () => {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+    traceScreen.classList.remove('active');
+    uploadScreen.style.display = 'flex';
+    fileInput.value = '';
+  });
+
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('dblclick', (e) => { if (isLocked) e.preventDefault(); });
+</script>
+
+</body>
+</html>
